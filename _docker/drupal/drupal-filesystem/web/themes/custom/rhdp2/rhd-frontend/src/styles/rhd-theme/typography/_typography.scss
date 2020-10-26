@@ -1,3 +1,9 @@
+:root {
+  // Text link decoration
+  --pf-global--link--TextDecoration: none;
+  --pf-theme--link--text-decoration: none;
+  --pf-theme--color--ui-link: #{$rhd-theme--link--color};
+}
 .pf-c-title.pf-m-4xl {
   @media screen and (min-width: 992px) {
     font-family: $rhd-font-stack-display;
@@ -22,10 +28,10 @@
 }
 
 .tile-title {
-  font-size: var(--pfe-theme--font-size--epsilon, 22px);
+  font-size: map-get($rhd-font-size, "med");
 
   a {
-    color: var(--pfe-theme--color--text, #151515);
+    color: $rhd-theme--font--color;
   }
 }
 
@@ -45,8 +51,6 @@ h4,
 h5,
 h6 {
   font-family: $rhd-font-stack-display;
-  --pfe-theme--font-family--heading: $rhd-font-stack-display;
-  font-family: var(--pfe-theme--font-family--heading, $rhd-font-stack-display);
 
   &.header-link>a {
     color: inherit;
@@ -137,7 +141,9 @@ h4.pf-c-title,
 }
 
 p,
-.pf-c-content p {
+.pf-c-content p,
+.pf-c-content ul li,
+.pf-c-content ol li {
   font-family: $rhd-font-stack-text;
   font-weight: var(--rhd-global--FontWeight-Display--medium);
   font-size: 16px;
@@ -189,12 +195,17 @@ a {
   }
 
   .pf-c-content & {
-    @extend %link;
     font-family: $rhd-font-stack-text;
     font-weight: var(--rhd-global--FontWeight-Display--medium);
     font-size: 16px;
     font-weight: 400;
     line-height: 24px;
+    text-decoration: var(--pf-theme--link--text-decoration, "underline");
+    color: var(--pf-theme--color--ui-link, $rhd-theme--link--color);
+
+    &:hover, &:active {
+      color: var(--pf-theme--color--ui-link--hover, $rhd-theme--link-hover--color);
+    }
 
     &:hover {
       text-decoration: underline;
@@ -208,4 +219,17 @@ a {
 
 .share-sm {
   margin-top: 2px;
+}
+
+// Override Patternfly content ul bullets.
+ul {
+  &.rhd-u-no-bullet {
+    list-style: none !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  &.pf-c-list.pf-m-inline li:not(:last-child) {
+    margin-right: var(--pf-global--spacer--sm, 8px);
+  }
 }

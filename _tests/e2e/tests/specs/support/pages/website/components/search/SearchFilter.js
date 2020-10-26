@@ -3,11 +3,21 @@ import Page from '../../../Page';
 import Driver from '../../../../utils/Driver.Extension';
 
 class SearchFilter extends Page {
-    get showBtn() {return $('.showBtn');}
-    get cover() {return $('.cover');}
-    get applyFilters() {return $('.applyFilters');}
-    get activeFilters() {return $('.activeFilters');}
-    get clearFilters() {return $('.clearFilters');}
+    get showBtn() {
+        return $('a[data-search-action="showFilters"]');
+    }
+    get cover() {
+        return $('.cover');
+    }
+    get applyFilters() {
+        return $('a[data-search-action="applyFilters"]');
+    }
+    get activeFilters() {
+        return $('.activeFilters');
+    }
+    get clearFilters() {
+        return $('a[data-search-action="clearFilters"]');
+    }
 
     active() {
         return this.activeFilters;
@@ -20,11 +30,11 @@ class SearchFilter extends Page {
     choose(filterType, filterOption) {
         switch (filterType) {
             case 'Content Type':
-                return this._selectFilter(1, filterOption);
-            case 'Product':
                 return this._selectFilter(2, filterOption);
-            default:
+            case 'Product':
                 return this._selectFilter(3, filterOption);
+            default:
+                return this._selectFilter(1, filterOption);
         }
     }
 
@@ -62,7 +72,7 @@ class SearchFilter extends Page {
                 Seems we need to wait for the menu to be fully displayed because we're at times getting partial menu displays in the test.
                 This solution is horrible. I've raised https://issues.jboss.org/browse/DEVELOPER-5896 for us to implement a better fix.
              */
-            Driver.pause(3000)
+            Driver.pause(3000);
             return true;
         }
         return false;

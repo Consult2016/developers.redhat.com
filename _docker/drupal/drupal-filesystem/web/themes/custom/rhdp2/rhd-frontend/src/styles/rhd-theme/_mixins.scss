@@ -1,3 +1,5 @@
+@import "colors/_rhd-brand";
+
 @mixin with-background-padding() {
   padding-top: var(--rhd-theme--container-spacer-lg);
   padding-bottom: var(--rhd-theme--container-spacer-lg);
@@ -8,20 +10,24 @@
 @mixin nestedComponent {
   .component {
     margin: 0 0 var(--rhd-theme--container-spacer-lg) 0;
-    &:not(.dark):not(.assembly-slim):not(.has-background):not(.background-gray) {
-      padding: 0;
+    padding: 0;
+
+    @each $componentStyleName, $componentStyleData in $componentStyles {
+      @if map-get($componentStyleData, "addImagePadding") {
+        &.#{$componentStyleName} {
+          padding: var(--rhd-theme--container-spacer-lg) var(--rhd-theme--container-spacer-3xl);
+        }
+      }
+    }
+
+    &.assembly-slim, &.has-background, &.background-gray {
+      padding: var(--rhd-theme--container-spacer-lg) var(--rhd-theme--container-spacer-md);
     }
   }
 }
 
-//hidden classes
-%link {
-  text-decoration: var(--pf-theme--link--text-decoration, "underline");
-  color: var(--pfe-theme--color--ui-link, #0066cc);
-
-  :hover {
-      color: var(--pfe-theme--color--ui-link--hover, #004080)
-  }
+@mixin resetComponentPadding {
+  padding: 0;
 }
 
 %hidden {
@@ -33,8 +39,4 @@
   background-position: 50%;
   background-repeat: no-repeat;
   background-size: cover;
-}
-
-%on-dark-assembly {
-  --pfe-theme--font-size--alpha: 46px;
 }

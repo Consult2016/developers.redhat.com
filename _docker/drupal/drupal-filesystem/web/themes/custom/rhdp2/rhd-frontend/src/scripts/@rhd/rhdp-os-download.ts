@@ -13,7 +13,7 @@ export default class RHDPOSDownload extends HTMLElement {
 
     stage_download_url = 'https://developers.stage.redhat.com';
     productDownloads = {
-        "cdk" : {"windowsUrl" : "/download-manager/file/cdk-3.11.0-1-minishift-windows-amd64.exe", "macUrl" : "/download-manager/file/cdk-3.11.0-1-minishift-darwin-amd64", "rhelUrl" : "/download-manager/file/cdk-3.11.0-1-minishift-linux-amd64"}
+        "cdk" : {"windowsUrl" : "/download-manager/file/cdk-3.13.0-1-minishift-windows-amd64.exe", "macUrl" : "/download-manager/file/cdk-3.13.0-1-minishift-darwin-amd64", "rhelUrl" : "/download-manager/file/cdk-3.13.0-1-minishift-linux-amd64"}
     };
 
     get url() {
@@ -125,7 +125,7 @@ export default class RHDPOSDownload extends HTMLElement {
 
     template = (strings, product, downloadUrl, platform, version) => {
         return `<div class="large-8 columns download-link">
-                    <a class="button heavy-cta" href="${downloadUrl}">
+                    <a class="pf-c-button pf-m-heavy" href="${downloadUrl}">
                         <i class="fa fa-download"></i> Download</a>
                     <div class="version-name">
                         <span id="rhdp-os-dl-product">${product}</span> 
@@ -137,7 +137,7 @@ export default class RHDPOSDownload extends HTMLElement {
     };
     downloadsTemplate = (strings, product, downloadUrl, platform, version) => {
         return `<div class="large-8 columns download-link">
-                    <a class="button heavy-cta" href="${downloadUrl}">
+                    <a class="pf-c-button pf-m-heavy" href="${downloadUrl}">
                         <i class="fa fa-download"></i> Download</a>
                     <div class="version-name">
                         <span id="rhdp-os-dl-product">${product}</span> 

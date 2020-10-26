@@ -4,9 +4,13 @@ status: true
 dependencies:
   config:
     - assembly.assembly_type.layout_two_col_left_sidebar
+    - entity_browser.browser.image_browser
+    - field.field.assembly.layout_two_col_left_sidebar.field_background_image
     - field.field.assembly.layout_two_col_left_sidebar.field_column_1
     - field.field.assembly.layout_two_col_left_sidebar.field_column_2
+    - field.field.assembly.layout_two_col_left_sidebar.field_navigation_title
   module:
+    - entity_browser
     - entity_browser_entity_form
     - field_layout
     - inline_entity_form
@@ -20,8 +24,22 @@ targetEntityType: assembly
 bundle: layout_two_col_left_sidebar
 mode: default
 content:
+  field_background_image:
+    type: entity_browser_file
+    weight: 6
+    settings:
+      entity_browser: image_browser
+      field_widget_remove: true
+      open: true
+      selection_mode: selection_append
+      preview_image_style: thumbnail
+      field_widget_edit: true
+      field_widget_replace: false
+      view_mode: default
+    region: content
+    third_party_settings: {  }
   field_column_1:
-    weight: 2
+    weight: 4
     settings:
       form_mode: default
       label_singular: ''
@@ -39,7 +57,7 @@ content:
     type: inline_entity_form_complex
     region: content
   field_column_2:
-    weight: 3
+    weight: 5
     settings:
       form_mode: default
       label_singular: ''
@@ -56,9 +74,17 @@ content:
         entity_browser_id: _none
     type: inline_entity_form_complex
     region: content
+  field_navigation_title:
+    weight: 3
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+    type: string_textfield
+    region: content
   name:
     type: string_textfield
-    weight: 0
+    weight: 1
     region: content
     settings:
       size: 60
@@ -66,12 +92,17 @@ content:
     third_party_settings: {  }
   status:
     type: boolean_checkbox
-    weight: 1
+    weight: 0
     region: content
     settings:
       display_label: true
     third_party_settings: {  }
+  visual_styles:
+    type: options_select
+    weight: 2
+    region: content
+    settings: {  }
+    third_party_settings: {  }
 hidden:
   langcode: true
   user_id: true
-  visual_styles: true

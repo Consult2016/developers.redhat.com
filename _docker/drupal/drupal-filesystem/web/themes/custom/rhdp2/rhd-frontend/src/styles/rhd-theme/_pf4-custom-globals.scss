@@ -64,16 +64,15 @@
 
   img,
   embed,
-  iframe,
   object,
   audio,
   video {
     max-width: 100%;
-    //Removed to prevent iframe size issue
-    //height: auto;
+    height: auto;
   }
 
   iframe {
+    max-width: 100%;
     border: 0;
   }
 
@@ -116,7 +115,9 @@
     font-weight: var(--pf-global--link--FontWeight);
     color: var(--pf-global--link--Color);
     text-decoration: var(--pf-global--link--TextDecoration);
-
+    &:visited, &:active {
+      color: var(--pf-global--link--Color);
+    }
     &:hover {
       --pf-global--link--Color: var(--pf-global--link--Color--hover);
       --pf-global--link--TextDecoration: var(--pf-global--link--TextDecoration--hover);

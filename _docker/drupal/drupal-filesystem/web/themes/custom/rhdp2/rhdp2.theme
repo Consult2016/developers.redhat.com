@@ -8,11 +8,14 @@
 use Drupal\Core\Asset\AttachedAssetsInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Url;
+use Drupal\assembly\Entity\Assembly;
 use Drupal\file\Entity\File;
 use Drupal\image\Entity\ImageStyle;
 use Drupal\node\Entity\Node;
+use Drupal\node\NodeInterface;
 use Drupal\Core\Menu\MenuTreeParameters;
-use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Block\Plugin\Block\Broken;
+use Drupal\Core\Access\AccessResult;
 
 /**
  * Implements hook_preprocess_page().
@@ -22,6 +25,50 @@ function rhdp2_preprocess_page(&$variables) {
   $variables['main_menu'] = _rhdp2_build_menu('rhd-navigation', ['pf-c-nav__tertiary-list']);
   $variables['topics_menu'] = _rhdp2_build_menu('topics-menu', ['pf-c-nav__tertiary-list']);
   $variables['mobile_menu'] = _rhdp2_build_menu('rhd-navigation', ['pf-c-nav__tertiary-list'], 'menu__rhd_navigation__mobile');
+  $variables['akamai_cache_clear_button'] = _rhdp2_build_block('akamai_cache_clear_block');
+
+  // We have the block but we want to hide it? Is it a required block?
+  if (in_array('rhdp2_page_title', $variables['page']['title'])) {
+    unset($variables['page']['title']['rhdp2_page_title']);
+  }
+}
+
+/**
+ * Implements hook_preprocess_menu().
+ */
+function rhdp2_preprocess_menu_local_task(&$variables) {
+  $variables['link']['#options']['attributes']['class'][] = 'pf-c-button pf-m-secondary ';
+}
+
+/**
+ * Build a render array from a block id.
+ *
+ * @param string $bid
+ *   Required: The block id to build. Defaults to a blank string.
+ * @param array $config
+ *   Optional: Array of configurations to pass to the block service.
+ *   Defaults to an empty array.
+ *
+ * @return array
+ *   Returns a render array for the block or an empty array.
+ */
+function _rhdp2_build_block($bid = '', array $config = []) {
+
+  // Get the block.
+  $block_service = \Drupal::service('plugin.manager.block');
+  $block = $block_service->createInstance($bid, $config);
+  if ($block instanceof Broken) {
+    return [];
+  }
+
+  // Check user access.
+  $user_access = $block->access(\Drupal::currentUser());
+  if ($user_access instanceof AccessResult && $user_access->isForbidden()
+      || is_bool($user_access) && !$user_access) {
+    return [];
+  }
+
+  return $block->build();
 }
 
 /**
@@ -69,15 +116,38 @@ function rhdp2_preprocess_menu(&$variables) {
 function rhdp2_theme_suggestions_page_alter(array &$suggestions, array $variables) {
   $node = \Drupal::request()->attributes->get('node');
 
-  if (!is_null($node) && method_exists($node, 'getType')) {
-    $new_suggestion = 'page__' . $node->getType();
+  if (!empty($node)) {
+    // If $node is a string integer i.e. '123', retrieve the Node object with
+    // that nid.
+    if (is_numeric($node) && strpos($node, '.') === FALSE && strpos($node, '-') === FALSE) {
+      $node = Node::load($node);
+    }
 
-    if (!in_array($new_suggestion, $suggestions)) {
-      $suggestions[] = $new_suggestion;
+    // If we have a $node object that is an instanceof NodeInterface, create
+    // template suggestions.
+    if ($node instanceof NodeInterface) {
+      $new_suggestion = 'page__' . $node->getType();
+
+      if (!in_array($new_suggestion, $suggestions)) {
+        $suggestions[] = $new_suggestion;
+      }
+      if ($node->hasField('field_kiosk_mode') && $node->field_kiosk_mode->value == TRUE) {
+        $suggestions[] = 'page__kiosk_mode';
+      }
     }
   }
 
   return $suggestions;
+}
+
+/**
+ * Implements hook_preprocess_form().
+ */
+function rhdp2_preprocess_form(array &$variables) {
+  if ($variables['element']['#form_id'] == "content_moderation_entity_moderation_form") {
+    // You won't be able to see this form until the /latest path is restored.
+    $variables['attributes']['class'][] = "component";
+  }
 }
 
 /**
@@ -87,7 +157,54 @@ function rhdp2_preprocess_node(&$variables) {
   $node = $variables['elements']['#node'];
   $type = $node->bundle();
 
-  // Process read time.
+  if ($variables['view_mode'] == 'full') {
+
+    // Handle hiding title.
+    // @todo: Simplify this in the content model.
+    if ($node->hasField('hide_title')) {
+      $variables['hide_title'] = $node->field_hide_title->value == 1 ? TRUE : FALSE;
+    }
+
+    if (in_array($type, ['assembly_page',
+      'katacoda_individual_lesson',
+      'katacoda_course',
+      'landing_page_single_offer',
+      'page',
+    ])) {
+      $variables['always_hide_title'] = TRUE;
+    }
+
+    // Add DCP search exclude metatag.
+    if ($node->hasField('field_exclude_from_search') && $node->field_exclude_from_search->value == 1) {
+      $webpage_search_exclude = [
+        '#tag' => 'meta',
+        '#attributes' => [
+          'name' => 'true',
+          'content' => 'true',
+        ],
+      ];
+      $variables['#attached']['html_head'][] = [$webpage_search_exclude, 'DCP:WebpageSearchExclude'];
+    }
+
+    // Add component class to nodes.
+    $node_component_exclude_list = [
+      'assembly_page',
+      'topic_page',
+      'events',
+      'katacoda_individual_lesson',
+      'katacoda_course',
+      'landing_page_single_offer',
+    ];
+    if (in_array($type, $node_component_exclude_list)) {
+      $variables['has_full_width_components'] = TRUE;
+    }
+    else {
+      $variables['attributes']['class'][] = 'component';
+      $variables['has_full_width_components'] = FALSE;
+    }
+  }
+
+  // Process read time estimates for learning paths.
   $measured_read_time_types = [
     'books',
     'cheat_sheet',
@@ -123,6 +240,15 @@ function rhdp2_preprocess_node(&$variables) {
     }
   }
 
+  if ($node->hasField('field_cheat_sheet_download_url')) {
+    $env_settings = \Drupal::config('redhat_developers');
+    $download_manager_base_url = $env_settings->get('downloadManager')['baseUrl'];
+    $download_url = $node->get('field_cheat_sheet_download_url')->getValue();
+    $download_path = parse_url($download_url[0]['uri'])['path'];
+    $download_url = $download_manager_base_url . $download_path;
+    $variables['content']['field_cheat_sheet_download_url'][0]['#url'] = Url::fromUri($download_url);
+  }
+
   // Add difficulty to attributes.
   if ($node->hasField('field_difficulty')) {
     $field_difficulty = $node->get('field_difficulty')->getValue();
@@ -148,6 +274,7 @@ function rhdp2_preprocess_node(&$variables) {
     }
 
     // Process Table of Contents.
+    // @TODO: this also lives in article.module.
     if ($node->hasField('field_hide_toc')) {
       $variables['hide_toc'] = $node->field_hide_toc->value ?? FALSE;
     }
@@ -254,8 +381,9 @@ function rhdp2_preprocess_node(&$variables) {
     $variables['event_title'] = $node->getTitle();
     $variables['event_description'] = $variables['content']['field_description'][0]['#text'] ?? '';
 
+    $variables['event_url'] = NULL;
     if ($node->hasField('field_more_details') && $event_details_link = $node->get('field_more_details')->getValue()) {
-      $variables['event_url'] = $event_details_link[0]['uri'];
+      $variables['event_url'] = ($event_details_link[0]['uri']) ? $event_details_link[0]['uri'] : NULL;
     }
 
     // TODO: Fix Duplicate Logic: See preprocess_assembly.
@@ -273,6 +401,53 @@ function rhdp2_preprocess_node(&$variables) {
     if ($variables['view_mode'] == 'teaser') {
       $node_title = $node->label();
       $variables['node_title'] = str_replace('"', '', $node_title);
+    }
+
+    // Card view mode for events.
+    if ($variables['view_mode'] == 'card') {
+
+      // Set variables.
+      $assembly_ids = [];
+      $today = strtotime('today');
+      $timestamps = [];
+      $dates = [];
+      $variables['dates'] = $dates;
+
+      // Get session dates if event has sessions.
+      if ($session_ids = $node->get('field_sessions')->getValue()) {
+        // Get the session ids.
+        foreach ($session_ids as $session_id) {
+          if (!in_array($session_id['target_id'], $assembly_ids)) {
+            $assembly_ids[] = $session_id['target_id'];
+          }
+        }
+        // Find sessions after one hour ago.
+        if ($session_assemblies = Assembly::loadMultiple($assembly_ids)) {
+          foreach ($session_assemblies as $session) {
+            $session_start_date = strtotime($session->get('field_start')->getValue()[0]['value']);
+            if ($session_start_date >= $today) {
+              $timestamps[] = $session_start_date;
+            }
+          }
+        }
+      }
+      // Get event date if event does not have sessions.
+      elseif ($event_start_date = $node->get('field_start_date')->getValue()[0]['value']) {
+        $event_start_date = strtotime($event_start_date);
+        if ($event_start_date >= $today) {
+          $timestamps[] = $event_start_date;
+        }
+      }
+
+      // Sort, format and display timestamps as dates.
+      if ($timestamps) {
+        sort($timestamps);
+        foreach ($timestamps as $timestamp) {
+          $dates[] = date('j F Y', $timestamp);
+        }
+        $dates = implode(', ', array_unique($dates));
+        $variables['dates'] = 'Dates: ' . $dates;
+      }
     }
   }
 
@@ -343,6 +518,121 @@ function rhdp2_preprocess_node(&$variables) {
       $variables['timestamp'] = $timestamp;
     }
   }
+
+  if ($node->hasField('field_cheat_sheet_download_url')) {
+    $env_settings = \Drupal::config('redhat_developers');
+    $download_manager_base_url = $env_settings->get('downloadManager')['baseUrl'];
+    $download_url = $node->get('field_cheat_sheet_download_url')->getValue();
+    $download_path = parse_url($download_url[0]['uri'])['path'];
+    $download_url = $download_manager_base_url . $download_path;
+    $variables['content']['field_cheat_sheet_download_url'][0]['#url'] = Url::fromUri($download_url);
+  }
+
+  // Prepare fields for taxonomy page.
+  $taxonomy_list_item_types = [
+    'article',
+    'coding_resource',
+    'events',
+    'video_resource',
+  ];
+  if (in_array($type, $taxonomy_list_item_types) && $variables['view_mode'] == 'taxonomy_list_item') {
+    switch ($type) {
+
+      case ('article'):
+        $variables['authors'] = _generate_authors_links($variables, 'field_author_evangelist', 'field_content_author');
+        break;
+
+      case ('coding_resource'):
+        $authors_values = [];
+        if ($contributors = $node->get('field_contributors')->getValue()) {
+          if (count($contributors) > 0) {
+            foreach ($contributors as $contributor) {
+              $authors_values[] = [
+                '#markup' => $contributor['value'],
+              ];
+            }
+          }
+        }
+        if ($original_author = $node->get('field_author')->getValue()) {
+          $authors_values[] = [
+            '#markup' => $original_author[0]['value'],
+          ];
+        }
+        $variables['authors'] = (empty($authors_values)) ? [] : $authors_values;
+        break;
+
+      case ('events'):
+        $variables['more_details'] = NULL;
+        if ($more_details = $node->get('field_more_details')->getValue()) {
+          $variables['more_details'] = ($more_details[0]['uri']) ? $more_details[0]['uri'] : NULL;
+        }
+        $variables['presenters'] = _generate_authors_links($variables, 'field_presenter_s_', NULL);
+        break;
+
+      case ('video_resource'):
+        $variables['authors'] = _generate_authors_links($variables, 'field_video_author', NULL);
+        break;
+    }
+  }
+}
+
+/**
+ * Generates an array of author links.
+ *
+ * @param string $dynamic_authors_field_name
+ *   The field used for author entity references.
+ * @param string $static_authors_filed_name
+ *   The field used for author strings.
+ *
+ * @return array
+ *   Returns a render array of author links or FALSE.
+ */
+function _generate_authors_links($variables, $dynamic_authors_field_name = NULL, $static_authors_filed_name = NULL) {
+  $node = $variables['elements']['#node'];
+  $authors_values = [];
+
+  if ($dynamic_authors_field_name) {
+    $authors = $node->get($dynamic_authors_field_name)->getValue();
+
+    if ($authors) {
+      $tids = [];
+
+      foreach ($authors as $author) {
+        $tids[] = $author['target_id'];
+      }
+
+      $author_nodes = Node::loadMultiple($tids);
+
+      if (count($author_nodes) > 0) {
+        foreach ($author_nodes as $author_node) {
+          if ($author_node->access('view')) {
+            $author_name = $author_node->getTitle();
+            $author_id = $author_node->id();
+            $author_url = Url::fromRoute('entity.node.canonical', ['node' => $author_id]);
+            $authors_link = Link::fromTextAndUrl($author_name, $author_url);
+            $authors_link = $authors_link->toRenderable();
+            $authors_link['#attributes'] = ['class' => ['rhd-m-link']];
+
+            $authors_values[] = [$authors_link];
+          }
+        }
+      }
+    }
+  }
+
+  if ($static_authors_filed_name) {
+    $guest_author = $node->get($static_authors_filed_name)->getValue();
+
+    if ($guest_author) {
+      $guest_author_name = $guest_author[0]['value'];
+
+      $authors_values[] = [
+        '#markup' => $guest_author_name,
+      ];
+    }
+  }
+
+  return (empty($authors_values)) ? FALSE : $authors_values;
 }
 
 /**
@@ -353,7 +643,7 @@ function rhdp2_preprocess_assembly(&$variables) {
   $type = $assembly->bundle();
 
   // Add component class to assemblies.
-  $assembly_compontent_exclude_list = [
+  $assembly_component_exclude_list = [
     'combo_item_assembly',
     'combo_item_manual',
     'combo_item_node',
@@ -364,7 +654,7 @@ function rhdp2_preprocess_assembly(&$variables) {
     'wordpress_post_reference',
   ];
 
-  if (!in_array($type, $assembly_compontent_exclude_list)) {
+  if (!in_array($type, $assembly_component_exclude_list)) {
     $variables['attributes']['class'][] = 'component';
   }
 
@@ -476,6 +766,37 @@ function rhdp2_preprocess_assembly(&$variables) {
       $variables['display_type'] = 'nav-menu';
     }
   }
+
+  // Define if an ICS file is attached to an event
+  // on the Call to Action assembly.
+  if ($type == 'call_to_action') {
+    $variables['has_ics'] = FALSE;
+    if (isset($assembly->get('field_calendar_event')->getValue()[0]['target_id'])) {
+      $event_tid = $assembly->get('field_calendar_event')->getValue()[0]['target_id'];
+      if ($event_node = Node::load($event_tid)) {
+        if ($event_node->get('field_ics_addevent_id')->value) {
+          $addevent_id = $event_node->get('field_ics_addevent_id')->value;
+          $variables['has_ics'] = ctype_alnum($addevent_id) ? TRUE : FALSE;
+        }
+      }
+    }
+  }
+
+  // Parse URI on Static Item assembly type for use in cards.
+  if ($type == 'static_item') {
+    if (isset($assembly->get('field_url')->getValue()[0]['uri'])) {
+      $uri = $assembly->get('field_url')->getValue()[0]['uri'];
+      if (strpos($uri, 'internal:') !== FALSE) {
+        $uri = str_replace('internal:', '', $uri);
+        $uri = (strpos($uri, '/') === 0) ? $uri : '/' . $uri;
+      }
+      else if(strpos($uri, 'entity:') !== FALSE) {
+        $uri = str_replace('entity:', '', $uri);
+        $uri = (strpos($uri, '/') === 0) ? $uri : '/' . $uri;
+      }
+      $variables['static_uri'] = $uri;
+    }
+  }
 }
 
 /**
@@ -492,6 +813,15 @@ function rhdp2_preprocess_block(array &$variables) {
 
     if ($block_id == 'rhdp2_rhdnavigation') {
       $variables['attributes']['class'][] = 'rhd-nav-fixed';
+    }
+
+    if ($block_id == 'rhdp2_local_tasks') {
+      $variables['attributes']['class'][] = 'component';
+    }
+
+    // The content moderation contrib module has an issue.
+    if ($block_id == 'rhdp2_content' && strpos(\Drupal::request()->getRequestUri(), 'moderation/dashboard') !== FALSE) {
+      $variables['attributes']['class'][] = 'component';
     }
   }
 }
@@ -540,6 +870,20 @@ function rhdp2_preprocess_field(&$variables, $hook) {
       }
     }
   }
+
+  // Turn AddEvent ID into links.
+  if ($variables['field_name'] === 'field_ics_addevent_id') {
+    $addevent_id = $variables['element']['#object']->get('field_ics_addevent_id')->getValue()[0]['value'];
+    $apple_url = "https://www.addevent.com/event/$addevent_id+apple";
+    $google_url = "https://www.addevent.com/event/$addevent_id+google";
+    $outlook_url = "https://www.addevent.com/event/$addevent_id+outlook";
+    $variables['addevent_links']['#markup'] = "<a href='$apple_url'>Apple</a>";
+    $variables['addevent_links']['#markup'] .= "<a href='$google_url'>Google</a>";
+    $variables['addevent_links']['#markup'] .= "<a href='$outlook_url'>Outlook</a>";
+    $variables['addevent_links']['#cache'] = [
+      'contexts' => ['url.path'],
+    ];
+  }
 }
 
 /**
@@ -566,7 +910,7 @@ function _is_field_used_as_content_image_in_card($variables) {
  */
 function _is_field_used_as_hero_image_in_card($variables) {
   if ($variables['entity_type'] === 'node') {
-    if ($variables['element']['#bundle'] === 'product' && $variables['element']['#view_mode'] === 'featured_tile' && $variables['field_name'] === 'field_image') {
+    if ($variables['element']['#bundle'] === 'product' && in_array($variables['element']['#view_mode'], ['featured_tile', 'card']) && $variables['field_name'] === 'field_image') {
       return TRUE;
     }
   }
@@ -653,21 +997,21 @@ function rhdp2_js_settings_alter(array &$settings, AttachedAssetsInterface $asse
 }
 
 /**
- * Implements hook_form_alter().
- */
-function rhdp2_form_alter(&$form, FormStateInterface $form_state, $form_id) {
-  if ($form_id == 'user_login_form') {
-    $form['#attached']['library'][] = 'rhdp2/drupal-user-login-form';
-  }
-}
-
-/**
  * Implements hook_preprocess_html().
  */
 function rhdp2_preprocess_html(array &$variables) {
   $current_path = \Drupal::service('path.current')->getPath();
   // Retrieve the redhat_developers config configuration object once.
   $rhd_config = \Drupal::config('redhat_developers');
+  // Get the current node object.
+  $node = \Drupal::request()->attributes->get('node');
+
+  // If we could not fetch the Node object from the Request. This should only
+  // happen on the Product pages, due to the highly custom 1 Node to multiple
+  // routes implementation.
+  if (empty($node) || !($node instanceof NodeInterface)) {
+    $node = _get_product_node_from_request();
+  }
 
   // Retrieve individual config values from the config object.
   $environment = $rhd_config->get('environment');
@@ -680,7 +1024,7 @@ function rhdp2_preprocess_html(array &$variables) {
 
   $variables['rhd_environment'] = $environment;
   $variables['rhd_dtm_code'] = $dtm_code;
-  $variables['rhd_dtm_script'] = redhat_www_ddo_default(\Drupal::request()->attributes->get('node'));
+  $variables['rhd_dtm_script'] = redhat_www_ddo_default($node);
   $variables['rhd_sentry_track'] = $sentry_track;
   $variables['rhd_sentry_script'] = $sentry_script;
   $variables['rhd_sentry_code'] = $sentry_code;
@@ -704,7 +1048,56 @@ function rhdp2_preprocess_html(array &$variables) {
 }
 
 /**
+ * Gets the Product node for a given route.
+ *
+ * This helper function returns the Product node for a given route. This is
+ * necessary because of our custom Product implementations that serve multiple
+ * routes from a single Node.
+ *
+ * @return \Drupal\node\NodeInterface|null
+ *   Return a Node object if this is a Product node. Otherwise, return NULL.
+ */
+function _get_product_node_from_request() {
+  $request_uri = \Drupal::request()->getRequestUri();
+
+  if (!empty($request_uri)) {
+    // Trim any leading and trailing slashes so that we can explode() below.
+    $request_uri_trimmed = trim($request_uri, '/');
+    $request_uri_pieces = explode('/', $request_uri_trimmed);
+
+    if ($request_uri_pieces[0] === 'products') {
+      $product_url_name = $request_uri_pieces[1];
+    }
+    // Else, we are not looking at a Product page. Return NULL.
+    else {
+      return NULL;
+    }
+  }
+  if (!empty($product_url_name)) {
+    $products = \Drupal::service('rhd_assemblies.download_manager_api')->getProductNodesByProductUrlName($product_url_name);
+
+    // Grab the first product in the array. There should always only be a single
+    // Product node returned, since the product_url_name should be unique.
+    if ($product = reset($products)) {
+      // If we've successfully retrieved a product Node object by the
+      // product_url_name, then assign it to $node.
+      if (!empty($product) && $product instanceof NodeInterface) {
+        return $product;
+      }
+    }
+  }
+}
+
+/**
  * Creates a digital data object (DDO) for Adobe Dynamic Tag Management (DTM).
+ *
+ * @param \Drupal\Entity\node\Node|null $node
+ *   This function will expects a Node object if the current request/page is a
+ *   Node. Otherwise, it expects NULL.
+ *
+ * @return array
+ *   Returns an associative array populated with data used to populate the
+ *   digitalData JS object.
  */
 function redhat_www_ddo_default($node) {
   $request = \Drupal::request();
@@ -715,7 +1108,7 @@ function redhat_www_ddo_default($node) {
   $ddo_pageID = "";
   $ddo_title = "";
 
-  if (!is_null($node)) {
+  if (!empty($node) && $node instanceof NodeInterface) {
     if ($siteerror == '/node/' . $node->nid->value) {
       $errorType = "404";
       $errorMessage = "404-error";
@@ -724,12 +1117,22 @@ function redhat_www_ddo_default($node) {
     $ddo_language = $node->langcode->value;
     $ddo_pageID = $node->nid->value;
     $ddo_title = $node->title->value;
+    $ddo_taxonomies = _get_all_taxonomy_terms($node);
   }
 
   $ddo = [
     'page' => [
       'attributes' => [
         'queryParameters' => '',
+        'taxonomyAudience' => $ddo_taxonomies['field_tax_audience_segment'] ?? [],
+        'taxonomyBusinessUnit' => $ddo_taxonomies['field_tax_business_unit'] ?? [],
+        'taxonomyCampaign' => $ddo_taxonomies['field_tax_campaign'] ?? [],
+        'taxonomyLifecycle' => $ddo_taxonomies['field_tax_lifecycle'] ?? [],
+        'taxonomyProduct' => $ddo_taxonomies['field_tax_product'] ?? [],
+        'taxonomyProductLine' => $ddo_taxonomies['field_tax_product_line'] ?? [],
+        'taxonomyProject' => $ddo_taxonomies['field_tax_project'] ?? [],
+        'taxonomyPromotion' => $ddo_taxonomies['field_tax_promotion'] ?? [],
+        'taxonomyRegion' => $ddo_taxonomies['field_tax_region'] ?? [],
       ],
       'category' => [
         'contentType' => '',
@@ -795,6 +1198,57 @@ function redhat_www_ddo_default($node) {
 }
 
 /**
+ * Gets all taxonomy terms, as labels, referenced by a $node.
+ *
+ * @param Drupal\node\NodeInterface $node
+ *   A node to retrieve taxonomy terms from.
+ *
+ * @return array
+ *   An array of taxonomy terms, keyed by fieldname.
+ */
+function _get_all_taxonomy_terms(NodeInterface $node) {
+  // Attempt to retrieve the taxonomy terms reference by the following fields.
+  $taxonomy_fields = [
+    'field_tax_audience_segment' => 'field_tax_audience_segment',
+    'field_tax_business_unit' => 'field_tax_business_unit',
+    'field_tax_campaign' => 'field_tax_campaign',
+    'field_tax_lifecycle' => 'field_tax_lifecycle',
+    'field_tax_product' => 'field_tax_product',
+    'field_tax_product_line' => 'field_tax_product_line',
+    'field_tax_project' => 'field_tax_project',
+    'field_tax_promotion' => 'field_tax_promotion',
+    'field_tax_region' => 'field_tax_region',
+  ];
+  // Initialize an array to collect taxonomy terms for the Adobe DDO object.
+  $ddo_taxonomies = [];
+
+  foreach ($taxonomy_fields as $taxonomy_field) {
+    // If this $node does not have one of the fields, set an empty array.
+    if (!$node->hasField($taxonomy_field)) {
+      $ddo_taxonomies[$taxonomy_field] = [];
+    }
+    else {
+      // Get the referenced taxonomy terms.
+      $terms = $node->get($taxonomy_field)->referencedEntities();
+
+      // If this $node is referencing taxonomy terms, push them onto the
+      // $ddo_taxonomies array, keyed by the fieldname.
+      if (!empty($terms)) {
+        foreach ($terms as $term) {
+          $ddo_taxonomies[$taxonomy_field][] = $term->id();
+        }
+      }
+      // If this field doesn't reference any terms, set an empty array.
+      else {
+        $ddo_taxonomies[$taxonomy_field] = [];
+      }
+    }
+  }
+
+  return $ddo_taxonomies;
+}
+
+/**
  * Implements hook_library_info_alter().
  *
  * By default, we will load the Keycloak prod script. On our Stage environment
@@ -828,5 +1282,16 @@ function rhdp2_library_info_alter(array &$libraries, $extension) {
         'minified' => FALSE,
       ];
     }
+  }
+}
+
+/**
+ * Implements hook_preprocess_views_view_table().
+ */
+function rhdp2_preprocess_views_view_table(&$variables) {
+  $view = $variables['view'];
+  if ($view->id() == 'events_collection' && $view->current_display == 'all_sessions_by_event') {
+    $variables['title_id'] = $variables['header']['title_1']['attributes']['id']->value();
+    $variables['#attached']['library'][] = 'rhd_assemblies/expandable';
   }
 }

@@ -57,6 +57,11 @@
             {{ universal_menu }}
           </nav>
         </div>
+        {% if akamai_cache_clear_button|render %}
+          <div class="pf-l-flex">
+            {{ akamai_cache_clear_button }}
+          </div>
+        {% endif %}
         <div class="pf-l-flex rhd-c-nav--rh-universal-login">
           <nav class="pf-c-nav" aria-label="Local">
             <ul class="pf-c-nav__tertiary-list">
@@ -67,7 +72,8 @@
               </li>
               <li class="pf-c-nav__item pf-u-mr-0 logged-in" style="display: none;">
                 <a href="#" class="pf-c-nav__link">
-                  <span class="icon"><i class="fas fa-user"></i></span><span class="logged-in-name"><span class="icon"><i class="fal fa-angle-down"></i></span>
+                  <span class="icon"><i class="fas fa-user"></i></span>
+                  <span class="logged-in-name"><span class="icon"><i class="fal fa-angle-down"></i></span></span>
                 </a>
                 <ul>
                   <li>
@@ -139,6 +145,7 @@
     <a id="main-content" tabindex="-1"></a>{# link is in html.html.twig #}
 
     <div class="layout-content">
+      {{ page.title }}
       {{ page.content }}
     </div>{# /.layout-content #}
   </main>

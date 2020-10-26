@@ -4,14 +4,13 @@ status: true
 dependencies:
   config:
     - assembly.assembly_type.all_products_listing
-    - assembly.assembly_type.blog_posts
     - assembly.assembly_type.bonus_content_list
     - assembly.assembly_type.call_to_action
     - assembly.assembly_type.code_snippet
     - assembly.assembly_type.collection
     - assembly.assembly_type.combo
-    - assembly.assembly_type.connectors
     - assembly.assembly_type.compact_dynamic_article_list
+    - assembly.assembly_type.connectors
     - assembly.assembly_type.content
     - assembly.assembly_type.content_image
     - assembly.assembly_type.content_pull_quote
@@ -21,6 +20,7 @@ dependencies:
     - assembly.assembly_type.dynamic_content_feed
     - assembly.assembly_type.dynamic_content_list
     - assembly.assembly_type.embedded_content
+    - assembly.assembly_type.events_collection
     - assembly.assembly_type.events_hero
     - assembly.assembly_type.events_list
     - assembly.assembly_type.featured_articles
@@ -58,14 +58,13 @@ settings:
   handler_settings:
     target_bundles:
       all_products_listing: all_products_listing
-      blog_posts: blog_posts
       bonus_content_list: bonus_content_list
       call_to_action: call_to_action
       code_snippet: code_snippet
       collection: collection
       combo: combo
-      connectors: connectors
       compact_dynamic_article_list: compact_dynamic_article_list
+      connectors: connectors
       content: content
       static_content_band: static_content_band
       events_list: events_list
@@ -73,7 +72,9 @@ settings:
       featured_products: featured_products
       dynamic_content_feed: dynamic_content_feed
       dynamic_content_list: dynamic_content_list
+      cta_form: cta_form
       embedded_content: embedded_content
+      events_collection: events_collection
       events_hero: events_hero
       product_categories: product_categories
       featured_articles: featured_articles
@@ -91,7 +92,6 @@ settings:
       rich_text_columns: rich_text_columns
       content_with_image: content_with_image
       sign_up_hero: sign_up_hero
-      cta_form: cta_form
       video_hero: video_hero
     sort:
       field: _none

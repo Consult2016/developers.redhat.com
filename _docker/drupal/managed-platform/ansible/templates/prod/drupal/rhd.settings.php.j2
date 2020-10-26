@@ -10,7 +10,7 @@ $settings['hash_salt'] = 'xuAWpK0fmrZ6UGofFcP3lBkcmdpdumWMLqvCbnYjFY85OgRXYvEKPI
 
 $config['redhat_developers']['environment'] = 'prod';
 $config['redhat_developers']['broker'] = 'https://broker.redhat.com/partner/drc/userMapping?redirect=';
-$config['redhat_developers']['dtm_code'] = 'https://www.redhat.com/dtm.js';
+$config['redhat_developers']['dtm_code'] = 'https://www.redhat.com/ma/dpal.js';
 $config['redhat_developers']['sentry_track'] = true;
 $config['redhat_developers']['sentry_script'] = 'https://cdn.ravenjs.com/3.23.1/raven.min.js';
 $config['redhat_developers']['sentry_code'] = '{{ drupal_sentry_code }}';
@@ -19,6 +19,8 @@ $config['redhat_developers']['rhd_base_url'] = 'developers.redhat.com';
 $config['redhat_developers']['rhd_final_base_url'] = 'developers.redhat.com';
 $config['redhat_developers']['downloadManager']['baseUrl'] = 'https://developers.redhat.com';
 $config['redhat_developers']['downloadManager']['fileBaseUrl'] = '/developers.redhat.com/download-manager/file/';
+$config['redhat_developers']['downloadManager']['ttl'] = 3600;
+$config['redhat_developers']['wordpressApi']['ttl'] = 3600;
 $config['redhat_developers']['keycloak']['accountUrl'] = 'https://sso.redhat.com/auth/realms/redhat-external/account/';
 $config['redhat_developers']['keycloak']['authUrl'] = 'https://sso.redhat.com/auth/';
 $config['redhat_developers']['keycloak']['client_id'] = 'rhd-web';

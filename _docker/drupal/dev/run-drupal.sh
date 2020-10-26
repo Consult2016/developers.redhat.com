@@ -25,7 +25,7 @@ if [[ $REGISTRY_REDHAT_IO_SKIP_LOGIN != true ]]; then
   docker login registry.redhat.io -u "${REGISTRY_REDHAT_IO_USERNAME}" -p "${REGISTRY_REDHAT_IO_PASSWORD}"
 fi
 docker pull docker-registry.upshift.redhat.com/developers/drupal-data:latest
-docker pull images.paas.redhat.com/rhdp/developer-base:rhel-76.3
+docker pull images.paas.redhat.com/rhdp/developer-base:rhel-76.4
 
 cd "${DIR}" && docker-compose down -v
 cd "${DIR}" && rm -rf $DIR/drupal-workspace
@@ -40,7 +40,7 @@ cd "${DIR}" && chmod -R 777 ./drupal-workspace/drupal_1/drupal/sites/default/fil
 cd "${DIR}" && docker-compose up -d drupal
 cd "${DIR}" && docker-compose exec -u root drupal /bin/bash -c "chown -R ${DUID}:0 /var/www/drupal/web/modules/contrib"
 
-# Build the theme for the first time
-cd "${DIR}" && ./build-theme.sh
+# Build the rhdp2 theme
+cd "${DIR}" && ./build-rhdp2-theme.sh
 
 cd "${DIR}" && docker-compose logs -f drupal

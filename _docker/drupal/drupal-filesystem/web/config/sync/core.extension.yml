@@ -19,6 +19,8 @@ module:
   cheat_sheet: 0
   ckeditor: 0
   ckeditor_indentblock: 0
+  ckeditor_templates: 0
+  ckeditor_templates_ui: 0
   coding_resource: 0
   color: 0
   components: 0
@@ -31,6 +33,7 @@ module:
   content_moderation_notifications: 0
   contextual: 0
   crop: 0
+  csv_serialization: 0
   ctools: 0
   ctools_block: 0
   datetime: 0
@@ -63,7 +66,6 @@ module:
   imagecache_external: 0
   inline_entity_form: 0
   interval: 0
-  jsonapi: 0
   keycloak: 0
   language: 0
   layout_discovery: 0
@@ -122,17 +124,16 @@ module:
   redirect_404: 0
   rest: 0
   restui: 0
+  rhd_admin: 0
   rhd_assemblies: 0
   rhd_common: 0
   rhd_custom_meta: 0
   rhd_disqus: 0
   rhd_eloqua_embed: 0
-  rhd_guzzle_throttle: 0
   rhd_katacoda: 0
   rhd_microsite: 0
+  rhd_purpose_attributes: 0
   rhd_solution_overview: 0
-  schemata: 0
-  schemata_json_schema: 0
   search: 0
   seckit: 0
   serialization: 0

@@ -1,0 +1,29 @@
+uuid: d52bd2f7-2acf-41ed-9641-e139db15ee8b
+langcode: en
+status: true
+dependencies:
+  module:
+    - akamai
+    - user
+  theme:
+    - rhdp2
+id: akamaicacheclear_2
+theme: rhdp2
+region: rhd_katacoda_header
+weight: -7
+provider: null
+plugin: akamai_cache_clear_block
+settings:
+  id: akamai_cache_clear_block
+  label: 'Akamai Cache Clear'
+  provider: akamai
+  label_display: '0'
+visibility:
+  user_role:
+    id: user_role
+    roles:
+      content_admin: content_admin
+      administrator: administrator
+    negate: false
+    context_mapping:
+      user: '@user.current_user_context:current_user'
